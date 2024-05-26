@@ -14,6 +14,7 @@ from sklearn.metrics import (
     r2_score,
     recall_score,
     roc_auc_score,
+    root_mean_squared_error,
 )
 from torch_geometric.graphgym import get_current_gpu_usage
 from torch_geometric.graphgym.config import cfg
@@ -126,6 +127,7 @@ class CustomLogger(Logger):
                     true.to(torch.device(cfg.device)).squeeze(),
                     num_classes=pred_score.shape[1],
                     average='macro',
+                    task='multiclass',
                 )
             )
 
@@ -210,12 +212,12 @@ class CustomLogger(Logger):
         reformat = lambda x: round(float(x), cfg.round)
         return {
             'mae': reformat(mean_absolute_error(true, pred)),
-            'r2': reformat(r2_score(true, pred, multioutput='uniform_average')),
+            'r2': reformat(r2_score(true.cpu().numpy(), pred.cpu().numpy(), multioutput='uniform_average')),
             'spearmanr': reformat(
-                eval_spearmanr(true.numpy(), pred.numpy())['spearmanr']
+                eval_spearmanr(true.cpu().numpy(), pred.cpu().numpy())['spearmanr']
             ),
             'mse': reformat(mean_squared_error(true, pred)),
-            'rmse': reformat(mean_squared_error(true, pred, squared=False)),
+            'rmse': reformat(root_mean_squared_error(true, pred)),
         }
 
     def update_stats(

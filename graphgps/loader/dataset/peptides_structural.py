@@ -143,7 +143,7 @@ class PeptidesStructuralDataset(InMemoryDataset):
             data.edge_index = torch.from_numpy(graph['edge_index']).to(torch.int64)
             data.edge_attr = torch.from_numpy(graph['edge_feat']).to(torch.int64)
             data.x = torch.from_numpy(graph['node_feat']).to(torch.int64)
-            data.y = torch.Tensor([y])
+            data.y = torch.tensor([y], dtype=torch.float32)
 
             data_list.append(data)
 
