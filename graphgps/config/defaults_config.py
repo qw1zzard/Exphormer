@@ -21,11 +21,10 @@ def overwrite_defaults_cfg(cfg):
 
 @register_config('extended_cfg')
 def extended_cfg(cfg):
-    """General extended config options.
-    """
+    """General extended config options."""
 
     # Additional name tag used in `run_dir` and `wandb_name` auto generation.
-    cfg.name_tag = ""
+    cfg.name_tag = ''
 
     # In training, if True (and also cfg.train.enable_ckpt is True) then
     # always checkpoint the current best model based on validation performance,

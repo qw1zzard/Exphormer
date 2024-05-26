@@ -8,11 +8,12 @@ import torch
 from joblib import Parallel, delayed
 from ogb.utils.features import atom_to_feature_vector, bond_to_feature_vector
 from ogb.utils.torch_util import replace_numpy_with_torchtensor
-from ogb.utils.url import decide_download, download_url as ogb_download_url
+from ogb.utils.url import decide_download
+from ogb.utils.url import download_url as ogb_download_url
 from rdkit.Chem.AllChem import MolFromSmiles
 from torch_geometric.data import Data, InMemoryDataset, download_url
 from torch_geometric.graphgym.models.transform import create_link_label
-from torch_geometric.utils import to_undirected, negative_sampling
+from torch_geometric.utils import negative_sampling, to_undirected
 from tqdm import tqdm
 
 from graphgps.utils import negate_edge_index
@@ -24,7 +25,7 @@ def cxsmiles_to_mol_with_contact(cxsmiles):
     list_of_contacts = [[]] * num_atoms
     for ii, atom in enumerate(mol.GetAtoms()):
         try:
-            this_list = [int(val) for val in atom.GetProp("contact").split(";")]
+            this_list = [int(val) for val in atom.GetProp('contact').split(';')]
             list_of_contacts[ii] = this_list
         except:
             pass
@@ -99,14 +100,17 @@ def mol2graph(mol):
 def cxsmiles_to_graph_with_contact(cxsmiles):
     mol, contact_idx = cxsmiles_to_mol_with_contact(cxsmiles)
     graph = mol2graph(mol)
-    graph["contact_idx"] = contact_idx
+    graph['contact_idx'] = contact_idx
     return graph
 
 
-def custom_structured_negative_sampling(edge_index, num_nodes: int,
-                                        num_neg_per_pos: int,
-                                        contains_neg_self_loops: bool = True,
-                                        return_ik_only: bool = False):
+def custom_structured_negative_sampling(
+    edge_index,
+    num_nodes: int,
+    num_neg_per_pos: int,
+    contains_neg_self_loops: bool = True,
+    return_ik_only: bool = False,
+):
     r"""Customized `torch_geometric.utils.structured_negative_sampling`.
 
     Samples a negative edge :obj:`(i,k)` for every positive edge
@@ -145,12 +149,15 @@ def custom_structured_negative_sampling(edge_index, num_nodes: int,
         _, unique_ind = np.unique(neg_idx, return_index=True)
         duplicate_mask = np.ones(len(neg_idx), dtype=bool)
         duplicate_mask[unique_ind] = False
-        mask = torch.from_numpy(np.logical_or(np.isin(neg_idx, pos_idx),
-                                              duplicate_mask)).to(torch.bool)
+        mask = torch.from_numpy(
+            np.logical_or(np.isin(neg_idx, pos_idx), duplicate_mask)
+        ).to(torch.bool)
         return mask.nonzero(as_tuple=False).view(-1)
 
     row, col = edge_index.cpu()
-    pos_idx = row * num_nodes + col  # Encodes as the index in a serialized adjacency matrix
+    pos_idx = (
+        row * num_nodes + col
+    )  # Encodes as the index in a serialized adjacency matrix
     if not contains_neg_self_loops:
         loop_idx = torch.arange(num_nodes) * (num_nodes + 1)
         pos_idx = torch.cat([pos_idx, loop_idx], dim=0)
@@ -158,8 +165,7 @@ def custom_structured_negative_sampling(edge_index, num_nodes: int,
     heads = row.unsqueeze(1).repeat(1, num_neg_per_pos).flatten()
     if not return_ik_only:
         tails = col.unsqueeze(1).repeat(1, num_neg_per_pos).flatten()
-    rand = torch.randint(num_nodes, (num_neg_per_pos * row.size(0),),
-                         dtype=torch.long)
+    rand = torch.randint(num_nodes, (num_neg_per_pos * row.size(0),), dtype=torch.long)
     neg_idx = heads * num_nodes + rand
 
     # Resample duplicates or sampled negative edges that are actually positive.
@@ -189,7 +195,7 @@ def custom_structured_negative_sampling(edge_index, num_nodes: int,
 
 
 def structured_neg_sampling_transform(data):
-    """ Structured negative sampling for link prediction tasks as a transform.
+    """Structured negative sampling for link prediction tasks as a transform.
 
     Sample `num_neg_per_pos` negative edges for each head node of a positive
     edge.
@@ -205,7 +211,8 @@ def structured_neg_sampling_transform(data):
         num_nodes=data.num_nodes,
         num_neg_per_pos=2,
         contains_neg_self_loops=True,
-        return_ik_only=True)
+        return_ik_only=True,
+    )
     id_neg = torch.stack(sampling_out)
 
     data.edge_index_labeled = torch.cat([id_pos, id_neg], dim=-1)
@@ -214,7 +221,7 @@ def structured_neg_sampling_transform(data):
 
 
 def neg_sampling_transform(data):
-    """ Negative sampling for link prediction tasks as a transform.
+    """Negative sampling for link prediction tasks as a transform.
 
     Sample `num_neg_samples` random negative edges using PyG method.
 
@@ -228,14 +235,15 @@ def neg_sampling_transform(data):
         edge_index=torch.cat([id_pos, data.edge_index], dim=-1),
         num_nodes=data.num_nodes,
         num_neg_samples=2 * id_pos.shape[1],
-        force_undirected=True).long()
+        force_undirected=True,
+    ).long()
     data.edge_index_labeled = torch.cat([id_pos, id_neg], dim=-1)
     data.edge_label = create_link_label(id_pos, id_neg).int()
     return data
 
 
 def complete_neg_transform(data):
-    """ Compute all negative edges for link prediction tasks as a transform.
+    """Compute all negative edges for link prediction tasks as a transform.
 
     Mark all possible edges that are not positive as negative. This will result
     in total (V**2 - V) number of labeled links.
@@ -247,8 +255,7 @@ def complete_neg_transform(data):
     """
     id_pos = data.edge_index_labeled[:, data.edge_label == 1]  # Positive edge_index
     id_neg = negate_edge_index(
-        edge_index=id_pos,
-        batch=torch.zeros(data.num_nodes, dtype=torch.long)
+        edge_index=id_pos, batch=torch.zeros(data.num_nodes, dtype=torch.long)
     )
     data.edge_index_labeled = torch.cat([id_pos, id_neg], dim=-1)
     data.edge_label = create_link_label(id_pos, id_neg).int()
@@ -265,9 +272,14 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
     VAL_RATIO = 0.05
     TEST_RATIO = 0.05
 
-    def __init__(self, root='dataset', subset='530k',
-                 smiles2graph=cxsmiles_to_graph_with_contact,
-                 transform=None, pre_transform=None):
+    def __init__(
+        self,
+        root='dataset',
+        subset='530k',
+        smiles2graph=cxsmiles_to_graph_with_contact,
+        transform=None,
+        pre_transform=None,
+    ):
         """
         PyG dataset of Contact Map prediction of the PCQM4Mv2 3D conformations.
 
@@ -292,7 +304,9 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
         self.folder = osp.join(root, 'pcqm4m-v2-contact', subset)
 
         self.url = 'https://datasets-public-research.s3.us-east-2.amazonaws.com/PCQM4M/pcqm4m-contact.tsv.gz'
-        self.version = 'f7ffb27942145a2e72f6f5f51716d3bc'  # MD5 hash of the intended dataset file
+        self.version = (
+            'f7ffb27942145a2e72f6f5f51716d3bc'  # MD5 hash of the intended dataset file
+        )
 
         if subset == 'full':
             self.url_shuffle_split = 'https://www.dropbox.com/s/r3mjzqyulslkyz4/full_shuffle_split_dict.pt?dl=1'
@@ -305,14 +319,14 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
             self.url_numatoms_split = 'https://www.dropbox.com/s/vjilcw352lvl8kl/530k_num-atoms_split_dict.pt?dl=1'
             self.md5_numatoms_split = 'ee6385dec83f608d0cc796ccb4f40e8a'
         else:
-            raise f"Unexpected dataset subset name: {self.subset}"
+            raise f'Unexpected dataset subset name: {self.subset}'
         self.generate_splits = False
 
         # Check version and update if necessary.
         release_tag = osp.join(self.folder, self.version)
         if osp.isdir(self.folder) and (not osp.exists(release_tag)):
-            print(f"{self.__class__.__name__} has been updated.")
-            if input("Will you update the dataset now? (y/N)\n").lower() == 'y':
+            print(f'{self.__class__.__name__} has been updated.')
+            if input('Will you update the dataset now? (y/N)\n').lower() == 'y':
                 shutil.rmtree(self.folder)
 
         super().__init__(self.folder, transform, pre_transform)
@@ -339,7 +353,7 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
             # Save to disk the MD5 hash of the downloaded file.
             hash = self._md5sum(path)
             if hash != self.version:
-                raise ValueError("Unexpected MD5 hash of the downloaded file")
+                raise ValueError('Unexpected MD5 hash of the downloaded file')
             open(osp.join(self.root, hash), 'w').close()
             # Download train/val/test splits.
             try:
@@ -348,15 +362,15 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
                 path_split2 = download_url(self.url_numatoms_split, self.folder)
                 assert self._md5sum(path_split2) == self.md5_numatoms_split
             except Exception as e:
-                print(f"Exception while downloading dataset splits: {e}")
-                print(f"...splits will be regenerated.")
+                print(f'Exception while downloading dataset splits: {e}')
+                print('...splits will be regenerated.')
                 self.generate_splits = True
         else:
             print('Stop download.')
             exit(-1)
 
     def _process_smiles(self, smiles):
-        """ Construct PyG graph data object with contact edges from a CXSMILES.
+        """Construct PyG graph data object with contact edges from a CXSMILES.
 
         Args:
             smiles (str): Chemaxon Extended SMILES
@@ -400,16 +414,16 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
         return data
 
     def process(self):
-        data_df = pd.read_csv(osp.join(self.raw_dir, 'pcqm4m-contact.tsv.gz'),
-                              sep="\t")
+        data_df = pd.read_csv(osp.join(self.raw_dir, 'pcqm4m-contact.tsv.gz'), sep='\t')
         # Chemaxon Extended SMILES
         if self.subset == 'full':
             smiles_list = data_df['cxsmiles']
         elif self.subset == '530k':
-            smiles_list = [s for i, s in enumerate(data_df['cxsmiles'])
-                           if i % 6 == 0]  # Subset.
+            smiles_list = [
+                s for i, s in enumerate(data_df['cxsmiles']) if i % 6 == 0
+            ]  # Subset.
         else:
-            raise f"Unexpected dataset subset name: {self.subset}"
+            raise f'Unexpected dataset subset name: {self.subset}'
         del data_df
 
         print('Converting CXSMILES strings into graphs...')
@@ -425,20 +439,19 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
             size_stats[0] += d.num_nodes
             size_stats[1] += (d.edge_label == 1).long().sum()
             size_stats[2] += (d.edge_label == 0).long().sum()
-        print(f"Processing done: "
-              f"num. kept mols={NG}, num. skipped={num_skipped}")
-        print(f"      avg stats: |G|={size_stats[0] / NG}, "
-              f"|pos_e|={size_stats[1] / NG}, |neg_e|={size_stats[2] / NG}")
+        print(f'Processing done: ' f'num. kept mols={NG}, num. skipped={num_skipped}')
+        print(
+            f'      avg stats: |G|={size_stats[0] / NG}, '
+            f'|pos_e|={size_stats[1] / NG}, |neg_e|={size_stats[2] / NG}'
+        )
 
         if self.generate_splits:
             # Random shuffle split of the molecules by 90/5/5 ratio.
-            self.create_shuffle_split(len(data_list),
-                                      self.VAL_RATIO, self.TEST_RATIO)
+            self.create_shuffle_split(len(data_list), self.VAL_RATIO, self.TEST_RATIO)
 
             # Create 90/5/5 split by the size of molecules.
             num_atoms_list = [d.num_nodes for d in data_list]
-            self.create_numatoms_split(num_atoms_list,
-                                       self.VAL_RATIO, self.TEST_RATIO)
+            self.create_numatoms_split(num_atoms_list, self.VAL_RATIO, self.TEST_RATIO)
 
         if self.pre_transform is not None:
             data_list = [self.pre_transform(data) for data in data_list]
@@ -449,7 +462,7 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
         torch.save((data, slices), self.processed_paths[0])
 
     def create_shuffle_split(self, N, val_ratio, test_ratio):
-        """ Create a random shuffle split and saves it to disk.
+        """Create a random shuffle split and saves it to disk.
         Args:
             N: Total size of the dataset to split.
         """
@@ -459,19 +472,21 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
         val_ratio_rem = val_ratio / (val_ratio + test_ratio)
 
         # Random shuffle split into 90/5/5.
-        train_ind = all_ind[:int(train_ratio * N)]
-        tmp_ind = all_ind[int(train_ratio * N):]
-        val_ind = tmp_ind[:int(val_ratio_rem * len(tmp_ind))]
-        test_ind = tmp_ind[int((1 - val_ratio_rem) * len(tmp_ind)):]
-        assert self._check_splits(N, [train_ind, val_ind, test_ind],
-                                  [train_ratio, val_ratio, test_ratio])
+        train_ind = all_ind[: int(train_ratio * N)]
+        tmp_ind = all_ind[int(train_ratio * N) :]
+        val_ind = tmp_ind[: int(val_ratio_rem * len(tmp_ind))]
+        test_ind = tmp_ind[int((1 - val_ratio_rem) * len(tmp_ind)) :]
+        assert self._check_splits(
+            N, [train_ind, val_ind, test_ind], [train_ratio, val_ratio, test_ratio]
+        )
 
         shuffle_split = {'train': train_ind, 'val': val_ind, 'test': test_ind}
-        torch.save(shuffle_split,
-                   osp.join(self.folder, f'{self.subset}_shuffle_split_dict.pt'))
+        torch.save(
+            shuffle_split, osp.join(self.folder, f'{self.subset}_shuffle_split_dict.pt')
+        )
 
     def create_numatoms_split(self, num_atoms_list, val_ratio, test_ratio):
-        """ Create split by the size of molecules, testing on the largest ones.
+        """Create split by the size of molecules, testing on the largest ones.
         Args:
             num_atoms_list: List with molecule size per each graph.
         """
@@ -483,22 +498,23 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
         # Split based on mol size into 90/5/5, but shuffle the top 10% randomly
         # before splitting to validation and test set.
         N = len(num_atoms_list)
-        train_ind = all_ind[:int(train_ratio * N)]
-        tmp_ind = all_ind[int(train_ratio * N):]
+        train_ind = all_ind[: int(train_ratio * N)]
+        tmp_ind = all_ind[int(train_ratio * N) :]
         rng.shuffle(tmp_ind)
-        val_ind = tmp_ind[:int(val_ratio_rem * len(tmp_ind))]
-        test_ind = tmp_ind[int((1 - val_ratio_rem) * len(tmp_ind)):]
+        val_ind = tmp_ind[: int(val_ratio_rem * len(tmp_ind))]
+        test_ind = tmp_ind[int((1 - val_ratio_rem) * len(tmp_ind)) :]
         assert len(train_ind) + len(val_ind) + len(test_ind) == N
-        assert self._check_splits(N, [train_ind, val_ind, test_ind],
-                                  [train_ratio, val_ratio, test_ratio])
+        assert self._check_splits(
+            N, [train_ind, val_ind, test_ind], [train_ratio, val_ratio, test_ratio]
+        )
 
         size_split = {'train': train_ind, 'val': val_ind, 'test': test_ind}
-        torch.save(size_split,
-                   osp.join(self.folder, f'{self.subset}_num-atoms_split_dict.pt'))
+        torch.save(
+            size_split, osp.join(self.folder, f'{self.subset}_num-atoms_split_dict.pt')
+        )
 
     def _check_splits(self, N, splits, ratios):
-        """ Check whether splits intersect and raise error if so.
-        """
+        """Check whether splits intersect and raise error if so."""
         assert sum([len(split) for split in splits]) == N
         for ii, split in enumerate(splits):
             true_ratio = len(split) / N
@@ -508,15 +524,15 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
                 n_intersect = len(set(splits[i]) & set(splits[j]))
                 if n_intersect != 0:
                     raise ValueError(
-                        f"Splits must not have intersecting indices: "
-                        f"split #{i} (n = {len(splits[i])}) and "
-                        f"split #{j} (n = {len(splits[j])}) have "
-                        f"{n_intersect} intersecting indices"
+                        f'Splits must not have intersecting indices: '
+                        f'split #{i} (n = {len(splits[i])}) and '
+                        f'split #{j} (n = {len(splits[j])}) have '
+                        f'{n_intersect} intersecting indices'
                     )
         return True
 
     def get_idx_split(self, split_name):
-        """ Get dataset splits.
+        """Get dataset splits.
 
         Args:
             split_name: Split type: 'shuffle', 'num-atoms'
@@ -525,8 +541,7 @@ class PygPCQM4Mv2ContactDataset(InMemoryDataset):
             Dict with 'train', 'val', 'test', splits indices.
         """
         split_file = osp.join(
-            self.folder,
-            f"{self.subset}_{split_name.replace('-', '_')}_split_dict.pt"
+            self.folder, f"{self.subset}_{split_name.replace('-', '_')}_split_dict.pt"
         )
         split_dict = replace_numpy_with_torchtensor(torch.load(split_file))
         return split_dict

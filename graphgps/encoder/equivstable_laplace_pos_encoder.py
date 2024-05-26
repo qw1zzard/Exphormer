@@ -11,7 +11,7 @@ class EquivStableLapPENodeEncoder(torch.nn.Module):
     This encoder simply transforms the k-dim node LapPE to d-dim to be
     later used at the local GNN module as edge weights.
     Based on the approach proposed in paper https://openreview.net/pdf?id=e95i1IHcWj
-    
+
     Args:
         dim_emb: Size of final node embedding
     """
@@ -32,13 +32,15 @@ class EquivStableLapPENodeEncoder(torch.nn.Module):
 
     def forward(self, batch):
         if not (hasattr(batch, 'EigVals') and hasattr(batch, 'EigVecs')):
-            raise ValueError("Precomputed eigen values and vectors are "
-                             f"required for {self.__class__.__name__}; set "
-                             f"config 'posenc_EquivStableLapPE.enable' to True")
+            raise ValueError(
+                'Precomputed eigen values and vectors are '
+                f'required for {self.__class__.__name__}; set '
+                f"config 'posenc_EquivStableLapPE.enable' to True"
+            )
         pos_enc = batch.EigVecs
 
         empty_mask = torch.isnan(pos_enc)  # (Num nodes) x (Num Eigenvectors)
-        pos_enc[empty_mask] = 0.  # (Num nodes) x (Num Eigenvectors)
+        pos_enc[empty_mask] = 0.0  # (Num nodes) x (Num Eigenvectors)
 
         if self.raw_norm:
             pos_enc = self.raw_norm(pos_enc)

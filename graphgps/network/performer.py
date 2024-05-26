@@ -20,18 +20,18 @@ class Performer(torch.nn.Module):
         dim_in = self.encoder.dim_in
 
         if cfg.gnn.layers_pre_mp > 0:
-            self.pre_mp = GNNPreMP(
-                dim_in, cfg.gnn.dim_inner, cfg.gnn.layers_pre_mp)
+            self.pre_mp = GNNPreMP(dim_in, cfg.gnn.dim_inner, cfg.gnn.layers_pre_mp)
             dim_in = cfg.gnn.dim_inner
 
-        assert cfg.gt.dim_hidden == cfg.gnn.dim_inner == dim_in, \
-            "The inner and hidden dims must match."
+        assert (
+            cfg.gt.dim_hidden == cfg.gnn.dim_inner == dim_in
+        ), 'The inner and hidden dims must match.'
 
         self.trf = BackbonePerformer(
             dim=cfg.gt.dim_hidden,
             depth=cfg.gt.layers,
             heads=cfg.gt.n_heads,
-            dim_head=cfg.gt.dim_hidden // cfg.gt.n_heads
+            dim_head=cfg.gt.dim_hidden // cfg.gt.n_heads,
         )
 
         GNNHead = register.head_dict[cfg.gnn.head]

@@ -4,13 +4,20 @@ import time
 import numpy as np
 import torch
 from scipy.stats import stats
-from sklearn.metrics import accuracy_score, precision_score, recall_score, \
-    f1_score, roc_auc_score, mean_absolute_error, mean_squared_error, \
-    confusion_matrix
-from sklearn.metrics import r2_score
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    precision_score,
+    r2_score,
+    recall_score,
+    roc_auc_score,
+)
 from torch_geometric.graphgym import get_current_gpu_usage
 from torch_geometric.graphgym.config import cfg
-from torch_geometric.graphgym.logger import infer_task, Logger
+from torch_geometric.graphgym.logger import Logger, infer_task
 from torch_geometric.graphgym.utils.io import dict_to_json, dict_to_tb
 from torchmetrics.functional import auroc
 
@@ -66,21 +73,26 @@ class CustomLogger(Logger):
         pred_score = torch.cat(self._pred)
         pred_int = self._get_pred_int(pred_score)
 
-        if true.shape[0] < 1e7:  # AUROC computation for very large datasets is too slow.
+        if (
+            true.shape[0] < 1e7
+        ):  # AUROC computation for very large datasets is too slow.
             # TorchMetrics AUROC on GPU if available.
-            auroc_score = auroc(pred_score.to(torch.device(cfg.device)),
-                                true.to(torch.device(cfg.device)),
-                                pos_label=1)
+            auroc_score = auroc(
+                pred_score.to(torch.device(cfg.device)),
+                true.to(torch.device(cfg.device)),
+                pos_label=1,
+            )
             if self.test_scores:
                 # SK-learn version.
                 try:
-                    r_a_score = roc_auc_score(true.cpu().numpy(),
-                                              pred_score.cpu().numpy())
+                    r_a_score = roc_auc_score(
+                        true.cpu().numpy(), pred_score.cpu().numpy()
+                    )
                 except ValueError:
                     r_a_score = 0.0
                 assert np.isclose(float(auroc_score), r_a_score)
         else:
-            auroc_score = 0.
+            auroc_score = 0.0
 
         reformat = lambda x: round(float(x), cfg.round)
         res = {
@@ -101,24 +113,29 @@ class CustomLogger(Logger):
 
         res = {
             'accuracy': reformat(accuracy_score(true, pred_int)),
-            'f1': reformat(f1_score(true, pred_int,
-                                    average='macro', zero_division=0)),
+            'f1': reformat(f1_score(true, pred_int, average='macro', zero_division=0)),
         }
         if cfg.metric_best == 'accuracy-SBM':
             res['accuracy-SBM'] = reformat(accuracy_SBM(true, pred_int))
         if true.shape[0] < 1e7:
             # AUROC computation for very large datasets runs out of memory.
             # TorchMetrics AUROC on GPU is much faster than sklearn for large ds
-            res['auc'] = reformat(auroc(pred_score.to(torch.device(cfg.device)),
-                                        true.to(torch.device(cfg.device)).squeeze(),
-                                        num_classes=pred_score.shape[1],
-                                        average='macro'))
+            res['auc'] = reformat(
+                auroc(
+                    pred_score.to(torch.device(cfg.device)),
+                    true.to(torch.device(cfg.device)).squeeze(),
+                    num_classes=pred_score.shape[1],
+                    average='macro',
+                )
+            )
 
             if self.test_scores:
                 # SK-learn version.
-                sk_auc = reformat(roc_auc_score(true, pred_score.exp(),
-                                                average='macro',
-                                                multi_class='ovr'))
+                sk_auc = reformat(
+                    roc_auc_score(
+                        true, pred_score.exp(), average='macro', multi_class='ovr'
+                    )
+                )
                 assert np.isclose(sk_auc, res['auc'])
 
         return res
@@ -130,18 +147,24 @@ class CustomLogger(Logger):
         # Send to GPU to speed up TorchMetrics if possible.
         true = true.to(torch.device(cfg.device))
         pred_score = pred_score.to(torch.device(cfg.device))
-        acc = MetricWrapper(metric='accuracy',
-                            target_nan_mask='ignore-mean-label',
-                            threshold=0.,
-                            cast_to_int=True)
-        ap = MetricWrapper(metric='averageprecision',
-                           target_nan_mask='ignore-mean-label',
-                           pos_label=1,
-                           cast_to_int=True)
-        auroc = MetricWrapper(metric='auroc',
-                              target_nan_mask='ignore-mean-label',
-                              pos_label=1,
-                              cast_to_int=True)
+        acc = MetricWrapper(
+            metric='accuracy',
+            target_nan_mask='ignore-mean-label',
+            threshold=0.0,
+            cast_to_int=True,
+        )
+        ap = MetricWrapper(
+            metric='averageprecision',
+            target_nan_mask='ignore-mean-label',
+            pos_label=1,
+            cast_to_int=True,
+        )
+        auroc = MetricWrapper(
+            metric='auroc',
+            target_nan_mask='ignore-mean-label',
+            pos_label=1,
+            cast_to_int=True,
+        )
         results = {
             'accuracy': reformat(acc(pred_score, true)),
             'ap': reformat(ap(pred_score, true)),
@@ -153,11 +176,11 @@ class CustomLogger(Logger):
             true = true.cpu().numpy()
             pred_score = pred_score.cpu().numpy()
             ogb = {
-                'accuracy': reformat(metrics_ogb.eval_acc(
-                    true, (pred_score > 0.).astype(int))['acc']),
+                'accuracy': reformat(
+                    metrics_ogb.eval_acc(true, (pred_score > 0.0).astype(int))['acc']
+                ),
                 'ap': reformat(metrics_ogb.eval_ap(true, pred_score)['ap']),
-                'auc': reformat(
-                    metrics_ogb.eval_rocauc(true, pred_score)['rocauc']),
+                'auc': reformat(metrics_ogb.eval_rocauc(true, pred_score)['rocauc']),
             }
             assert np.isclose(ogb['accuracy'], results['accuracy'])
             assert np.isclose(ogb['ap'], results['ap'])
@@ -167,6 +190,7 @@ class CustomLogger(Logger):
 
     def subtoken_prediction(self):
         from ogb.graphproppred import Evaluator
+
         evaluator = Evaluator('ogbg-code2')
 
         seq_ref_list = []
@@ -175,7 +199,7 @@ class CustomLogger(Logger):
             seq_ref_list.extend(seq_ref)
             seq_pred_list.extend(seq_pred)
 
-        input_dict = {"seq_ref": seq_ref_list, "seq_pred": seq_pred_list}
+        input_dict = {'seq_ref': seq_ref_list, 'seq_pred': seq_pred_list}
         result = evaluator.eval(input_dict)
         result['f1'] = result['F1']
         del result['F1']
@@ -187,14 +211,16 @@ class CustomLogger(Logger):
         return {
             'mae': reformat(mean_absolute_error(true, pred)),
             'r2': reformat(r2_score(true, pred, multioutput='uniform_average')),
-            'spearmanr': reformat(eval_spearmanr(true.numpy(),
-                                                 pred.numpy())['spearmanr']),
+            'spearmanr': reformat(
+                eval_spearmanr(true.numpy(), pred.numpy())['spearmanr']
+            ),
             'mse': reformat(mean_squared_error(true, pred)),
             'rmse': reformat(mean_squared_error(true, pred, squared=False)),
         }
 
-    def update_stats(self, true, pred, loss, lr, time_used, params,
-                     dataset_name=None, **kwargs):
+    def update_stats(
+        self, true, pred, loss, lr, time_used, params, dataset_name=None, **kwargs
+    ):
         if dataset_name == 'ogbg-code2':
             assert true['y_arr'].shape[1] == len(pred)  # max_seq_len (5)
             assert true['y_arr'].shape[0] == pred[0].shape[0]  # batch size
@@ -202,8 +228,8 @@ class CustomLogger(Logger):
 
             # Decode the predicted sequence tokens, so we don't need to store
             # the logits that take significant memory.
-            from graphgps.loader.ogbg_code2_utils import idx2vocab, \
-                decode_arr_to_seq
+            from graphgps.loader.ogbg_code2_utils import decode_arr_to_seq, idx2vocab
+
             arr_to_seq = lambda arr: decode_arr_to_seq(arr, idx2vocab)
             mat = []
             for i in range(len(pred)):
@@ -248,10 +274,14 @@ class CustomLogger(Logger):
         else:
             raise ValueError('Task has to be regression or classification')
 
-        epoch_stats = {'epoch': cur_epoch,
-                       'time_epoch': round(self._time_used, cfg.round)}
-        eta_stats = {'eta': round(self.eta(cur_epoch), cfg.round),
-                     'eta_hours': round(self.eta(cur_epoch) / 3600, cfg.round)}
+        epoch_stats = {
+            'epoch': cur_epoch,
+            'time_epoch': round(self._time_used, cfg.round),
+        }
+        eta_stats = {
+            'eta': round(self.eta(cur_epoch), cfg.round),
+            'eta_hours': round(self.eta(cur_epoch) / 3600, cfg.round),
+        }
         custom_stats = self.custom()
 
         if self.name == 'train':
@@ -260,15 +290,10 @@ class CustomLogger(Logger):
                 **eta_stats,
                 **basic_stats,
                 **task_stats,
-                **custom_stats
+                **custom_stats,
             }
         else:
-            stats = {
-                **epoch_stats,
-                **basic_stats,
-                **task_stats,
-                **custom_stats
-            }
+            stats = {**epoch_stats, **basic_stats, **task_stats, **custom_stats}
 
         # print
         logging.info('{}: {}'.format(self.name, stats))
@@ -279,8 +304,10 @@ class CustomLogger(Logger):
             dict_to_tb(stats, self.tb_writer, cur_epoch)
         self.reset()
         if cur_epoch < 3:
-            logging.info(f"...computing epoch stats took: "
-                         f"{time.perf_counter() - start_time:.2f}s")
+            logging.info(
+                f'...computing epoch stats took: '
+                f'{time.perf_counter() - start_time:.2f}s'
+            )
         return stats
 
 
@@ -299,8 +326,7 @@ def create_logger():
 
 
 def eval_spearmanr(y_true, y_pred):
-    """Compute Spearman Rho averaged across tasks.
-    """
+    """Compute Spearman Rho averaged across tasks."""
     res_list = []
 
     if y_true.ndim == 1:
@@ -309,7 +335,8 @@ def eval_spearmanr(y_true, y_pred):
         for i in range(y_true.shape[1]):
             # ignore nan values
             is_labeled = ~np.isnan(y_true[:, i])
-            res_list.append(stats.spearmanr(y_true[is_labeled, i],
-                                            y_pred[is_labeled, i])[0])
+            res_list.append(
+                stats.spearmanr(y_true[is_labeled, i], y_pred[is_labeled, i])[0]
+            )
 
     return {'spearmanr': sum(res_list) / len(res_list)}

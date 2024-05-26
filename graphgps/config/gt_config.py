@@ -59,7 +59,7 @@ def set_cfg_gt(cfg):
     # BigBird model/GPS-BigBird layer.
     cfg.gt.bigbird = CN()
 
-    cfg.gt.bigbird.attention_type = "block_sparse"
+    cfg.gt.bigbird.attention_type = 'block_sparse'
 
     cfg.gt.bigbird.chunk_size_feed_forward = 0
 
@@ -67,7 +67,7 @@ def set_cfg_gt(cfg):
 
     cfg.gt.bigbird.add_cross_attention = False
 
-    cfg.gt.bigbird.hidden_act = "relu"
+    cfg.gt.bigbird.hidden_act = 'relu'
 
     cfg.gt.bigbird.max_position_embeddings = 128
 

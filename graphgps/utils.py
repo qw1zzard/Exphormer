@@ -3,7 +3,6 @@ import logging
 import torch
 from torch_geometric.utils import remove_self_loops
 from torch_scatter import scatter
-
 from yacs.config import CfgNode
 
 
@@ -28,8 +27,7 @@ def negate_edge_index(edge_index, batch=None):
 
     batch_size = batch.max().item() + 1
     one = batch.new_ones(batch.size(0))
-    num_nodes = scatter(one, batch,
-                        dim=0, dim_size=batch_size, reduce='add')
+    num_nodes = scatter(one, batch, dim=0, dim_size=batch_size, reduce='add')
     cum_nodes = torch.cat([batch.new_zeros(1), num_nodes.cumsum(dim=0)])
 
     idx0 = batch[edge_index[0]]
@@ -40,8 +38,7 @@ def negate_edge_index(edge_index, batch=None):
     for i in range(batch_size):
         n = num_nodes[i].item()
         size = [n, n]
-        adj = torch.ones(size, dtype=torch.short,
-                         device=edge_index.device)
+        adj = torch.ones(size, dtype=torch.short, device=edge_index.device)
 
         # Remove existing edges from the full N x N adjacency matrix
         flattened_size = n * n
@@ -49,8 +46,7 @@ def negate_edge_index(edge_index, batch=None):
         _idx1 = idx1[idx0 == i]
         _idx2 = idx2[idx0 == i]
         idx = _idx1 * n + _idx2
-        zero = torch.zeros(_idx1.numel(), dtype=torch.short,
-                           device=edge_index.device)
+        zero = torch.zeros(_idx1.numel(), dtype=torch.short, device=edge_index.device)
         scatter(zero, idx, dim=0, out=adj, reduce='mul')
 
         # Convert to edge index format
@@ -77,7 +73,7 @@ def flatten_dict(metrics):
     for i in range(len(metrics)):
         # Take the latest metrics.
         stats = metrics[i][-1]
-        result.update({f"{prefixes[i]}/{k}": v for k, v in stats.items()})
+        result.update({f'{prefixes[i]}/{k}': v for k, v in stats.items()})
     return result
 
 
@@ -92,9 +88,11 @@ def cfg_to_dict(cfg_node, key_list=[]):
 
     if not isinstance(cfg_node, CfgNode):
         if type(cfg_node) not in _VALID_TYPES:
-            logging.warning(f"Key {'.'.join(key_list)} with "
-                            f"value {type(cfg_node)} is not "
-                            f"a valid type; valid types: {_VALID_TYPES}")
+            logging.warning(
+                f"Key {'.'.join(key_list)} with "
+                f"value {type(cfg_node)} is not "
+                f"a valid type; valid types: {_VALID_TYPES}"
+            )
         return cfg_node
     else:
         cfg_dict = dict(cfg_node)
@@ -112,9 +110,9 @@ def make_wandb_name(cfg):
         dataset_name = dataset_name[4:]
     if dataset_name in ['GNNBenchmarkDataset', 'TUDataset']:
         # Shorten some verbose dataset naming schemes.
-        dataset_name = ""
+        dataset_name = ''
     if cfg.dataset.name != 'none':
-        dataset_name += "-" if dataset_name != "" else ""
+        dataset_name += '-' if dataset_name != '' else ''
         if cfg.dataset.name == 'LocalDegreeProfile':
             dataset_name += 'LDP'
         else:
@@ -122,10 +120,10 @@ def make_wandb_name(cfg):
     # Format model name.
     model_name = cfg.model.type
     if cfg.model.type in ['gnn', 'custom_gnn']:
-        model_name += f".{cfg.gnn.layer_type}"
+        model_name += f'.{cfg.gnn.layer_type}'
     elif cfg.model.type == 'GPSModel':
-        model_name = f"GPS.{cfg.gt.layer_type}"
-    model_name += f".{cfg.name_tag}" if cfg.name_tag else ""
+        model_name = f'GPS.{cfg.gt.layer_type}'
+    model_name += f'.{cfg.name_tag}' if cfg.name_tag else ''
     # Compose wandb run name.
-    name = f"{dataset_name}.{model_name}.r{cfg.run_id}"
+    name = f'{dataset_name}.{model_name}.r{cfg.run_id}'
     return name

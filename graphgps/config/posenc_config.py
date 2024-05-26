@@ -4,8 +4,7 @@ from yacs.config import CfgNode as CN
 
 @register_config('posenc')
 def set_cfg_posenc(cfg):
-    """Extend configuration with positional encoding options.
-    """
+    """Extend configuration with positional encoding options."""
 
     # Argument group for each Positional Encoding class.
     cfg.posenc_LapPE = CN()
@@ -16,13 +15,19 @@ def set_cfg_posenc(cfg):
     cfg.posenc_EquivStableLapPE = CN()
 
     # Effective Resistance Embeddings
-    cfg.posenc_ERN = CN() #Effective Resistance for Nodes
-    cfg.posenc_ERE = CN() #Effective Resistance for Edges
+    cfg.posenc_ERN = CN()  # Effective Resistance for Nodes
+    cfg.posenc_ERE = CN()  # Effective Resistance for Edges
 
     # Common arguments to all PE types.
-    for name in ['posenc_LapPE', 'posenc_SignNet',
-                 'posenc_RWSE', 'posenc_HKdiagSE', 'posenc_ElstaticSE',
-                  'posenc_ERN', 'posenc_ERE']:
+    for name in [
+        'posenc_LapPE',
+        'posenc_SignNet',
+        'posenc_RWSE',
+        'posenc_HKdiagSE',
+        'posenc_ElstaticSE',
+        'posenc_ERN',
+        'posenc_ERE',
+    ]:
         pecfg = getattr(cfg, name)
 
         # Use extended positional encodings

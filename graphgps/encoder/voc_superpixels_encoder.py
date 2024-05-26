@@ -1,7 +1,9 @@
 import torch
 from torch_geometric.graphgym.config import cfg
-from torch_geometric.graphgym.register import (register_node_encoder,
-                                               register_edge_encoder)
+from torch_geometric.graphgym.register import (
+    register_edge_encoder,
+    register_node_encoder,
+)
 
 """
 === Description of the VOCSuperpixels dataset === 
@@ -14,6 +16,7 @@ Shape of y : [num_nodes]
 
 VOC_node_input_dim = 14
 # VOC_edge_input_dim = 1 or 2; defined in class VOCEdgeEncoder
+
 
 @register_node_encoder('VOCNode')
 class VOCNodeEncoder(torch.nn.Module):

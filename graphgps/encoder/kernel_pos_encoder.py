@@ -27,13 +27,15 @@ class KernelPENodeEncoder(torch.nn.Module):
     def __init__(self, dim_emb, expand_x=True):
         super().__init__()
         if self.kernel_type is None:
-            raise ValueError(f"{self.__class__.__name__} has to be "
-                             f"preconfigured by setting 'kernel_type' class"
-                             f"variable before calling the constructor.")
+            raise ValueError(
+                f'{self.__class__.__name__} has to be '
+                f"preconfigured by setting 'kernel_type' class"
+                f'variable before calling the constructor.'
+            )
 
         dim_in = cfg.share.dim_in  # Expected original input node features dim
 
-        pecfg = getattr(cfg, f"posenc_{self.kernel_type}")
+        pecfg = getattr(cfg, f'posenc_{self.kernel_type}')
         dim_pe = pecfg.dim_pe  # Size of the kernel-based PE embedding
         num_rw_steps = len(pecfg.kernel.times)
         model_type = pecfg.model.lower()  # Encoder NN model type for PEs
@@ -42,8 +44,10 @@ class KernelPENodeEncoder(torch.nn.Module):
         self.pass_as_var = pecfg.pass_as_var  # Pass PE also as a separate variable
 
         if dim_emb - dim_pe < 1:
-            raise ValueError(f"PE dim size {dim_pe} is too large for "
-                             f"desired embedding size of {dim_emb}.")
+            raise ValueError(
+                f'PE dim size {dim_pe} is too large for '
+                f'desired embedding size of {dim_emb}.'
+            )
 
         if expand_x:
             self.linear_x = nn.Linear(dim_in, dim_emb - dim_pe)
@@ -71,16 +75,20 @@ class KernelPENodeEncoder(torch.nn.Module):
         elif model_type == 'linear':
             self.pe_encoder = nn.Linear(num_rw_steps, dim_pe)
         else:
-            raise ValueError(f"{self.__class__.__name__}: Does not support "
-                             f"'{model_type}' encoder model.")
+            raise ValueError(
+                f'{self.__class__.__name__}: Does not support '
+                f"'{model_type}' encoder model."
+            )
 
     def forward(self, batch):
-        pestat_var = f"pestat_{self.kernel_type}"
+        pestat_var = f'pestat_{self.kernel_type}'
         if not hasattr(batch, pestat_var):
-            raise ValueError(f"Precomputed '{pestat_var}' variable is "
-                             f"required for {self.__class__.__name__}; set "
-                             f"config 'posenc_{self.kernel_type}.enable' to "
-                             f"True, and also set 'posenc.kernel.times' values")
+            raise ValueError(
+                f"Precomputed '{pestat_var}' variable is "
+                f'required for {self.__class__.__name__}; set '
+                f"config 'posenc_{self.kernel_type}.enable' to "
+                f"True, and also set 'posenc.kernel.times' values"
+            )
 
         pos_enc = getattr(batch, pestat_var)  # (Num nodes) x (Num kernel times)
         # pos_enc = batch.rw_landing  # (Num nodes) x (Num kernel times)
@@ -103,20 +111,20 @@ class KernelPENodeEncoder(torch.nn.Module):
 
 @register_node_encoder('RWSE')
 class RWSENodeEncoder(KernelPENodeEncoder):
-    """Random Walk Structural Encoding node encoder.
-    """
+    """Random Walk Structural Encoding node encoder."""
+
     kernel_type = 'RWSE'
 
 
 @register_node_encoder('HKdiagSE')
 class HKdiagSENodeEncoder(KernelPENodeEncoder):
-    """Heat kernel (diagonal) Structural Encoding node encoder.
-    """
+    """Heat kernel (diagonal) Structural Encoding node encoder."""
+
     kernel_type = 'HKdiagSE'
 
 
 @register_node_encoder('ElstaticSE')
 class ElstaticSENodeEncoder(KernelPENodeEncoder):
-    """Electrostatic interactions Structural Encoding node encoder.
-    """
+    """Electrostatic interactions Structural Encoding node encoder."""
+
     kernel_type = 'ElstaticSE'

@@ -13,8 +13,13 @@ from tqdm import tqdm
 
 
 class PeptidesFunctionalDataset(InMemoryDataset):
-    def __init__(self, root='datasets', smiles2graph=smiles2graph,
-                 transform=None, pre_transform=None):
+    def __init__(
+        self,
+        root='datasets',
+        smiles2graph=smiles2graph,
+        transform=None,
+        pre_transform=None,
+    ):
         """
         PyG dataset of 15,535 peptides represented as their molecular graph
         (SMILES) with 10-way multi-task binary classification of their
@@ -42,15 +47,17 @@ class PeptidesFunctionalDataset(InMemoryDataset):
         self.folder = osp.join(root, 'peptides-functional')
 
         self.url = 'https://www.dropbox.com/s/ol2v01usvaxbsr8/peptide_multi_class_dataset.csv.gz?dl=1'
-        self.version = '701eb743e899f4d793f0e13c8fa5a1b4'  # MD5 hash of the intended dataset file
+        self.version = (
+            '701eb743e899f4d793f0e13c8fa5a1b4'  # MD5 hash of the intended dataset file
+        )
         self.url_stratified_split = 'https://www.dropbox.com/s/j4zcnx2eipuo0xz/splits_random_stratified_peptide.pickle?dl=1'
         self.md5sum_stratified_split = '5a0114bdadc80b94fc7ae974f13ef061'
 
         # Check version and update if necessary.
         release_tag = osp.join(self.folder, self.version)
         if osp.isdir(self.folder) and (not osp.exists(release_tag)):
-            print(f"{self.__class__.__name__} has been updated.")
-            if input("Will you update the dataset now? (y/N)\n").lower() == 'y':
+            print(f'{self.__class__.__name__} has been updated.')
+            if input('Will you update the dataset now? (y/N)\n').lower() == 'y':
                 shutil.rmtree(self.folder)
 
         super().__init__(self.folder, transform, pre_transform)
@@ -77,7 +84,7 @@ class PeptidesFunctionalDataset(InMemoryDataset):
             # Save to disk the MD5 hash of the downloaded file.
             hash = self._md5sum(path)
             if hash != self.version:
-                raise ValueError("Unexpected MD5 hash of the downloaded file")
+                raise ValueError('Unexpected MD5 hash of the downloaded file')
             open(osp.join(self.root, hash), 'w').close()
             # Download train/val/test splits.
             path_split1 = download_url(self.url_stratified_split, self.root)
@@ -87,8 +94,9 @@ class PeptidesFunctionalDataset(InMemoryDataset):
             exit(-1)
 
     def process(self):
-        data_df = pd.read_csv(osp.join(self.raw_dir,
-                                       'peptide_multi_class_dataset.csv.gz'))
+        data_df = pd.read_csv(
+            osp.join(self.raw_dir, 'peptide_multi_class_dataset.csv.gz')
+        )
         smiles_list = data_df['smiles']
 
         print('Converting SMILES strings into graphs...')
@@ -99,14 +107,12 @@ class PeptidesFunctionalDataset(InMemoryDataset):
             smiles = smiles_list[i]
             graph = self.smiles2graph(smiles)
 
-            assert (len(graph['edge_feat']) == graph['edge_index'].shape[1])
-            assert (len(graph['node_feat']) == graph['num_nodes'])
+            assert len(graph['edge_feat']) == graph['edge_index'].shape[1]
+            assert len(graph['node_feat']) == graph['num_nodes']
 
             data.__num_nodes__ = int(graph['num_nodes'])
-            data.edge_index = torch.from_numpy(graph['edge_index']).to(
-                torch.int64)
-            data.edge_attr = torch.from_numpy(graph['edge_feat']).to(
-                torch.int64)
+            data.edge_index = torch.from_numpy(graph['edge_index']).to(torch.int64)
+            data.edge_attr = torch.from_numpy(graph['edge_feat']).to(torch.int64)
             data.x = torch.from_numpy(graph['node_feat']).to(torch.int64)
             data.y = torch.Tensor([eval(data_df['labels'].iloc[i])])
 
@@ -121,13 +127,12 @@ class PeptidesFunctionalDataset(InMemoryDataset):
         torch.save((data, slices), self.processed_paths[0])
 
     def get_idx_split(self):
-        """ Get dataset splits.
+        """Get dataset splits.
 
         Returns:
             Dict with 'train', 'val', 'test', splits indices.
         """
-        split_file = osp.join(self.root,
-                              "splits_random_stratified_peptide.pickle")
+        split_file = osp.join(self.root, 'splits_random_stratified_peptide.pickle')
         with open(split_file, 'rb') as f:
             splits = pickle.load(f)
         split_dict = replace_numpy_with_torchtensor(splits)

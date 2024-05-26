@@ -6,8 +6,7 @@ from torch_geometric.graphgym.register import register_loss
 
 @register_loss('weighted_cross_entropy')
 def weighted_cross_entropy(pred, true):
-    """Weighted cross-entropy for unbalanced classes.
-    """
+    """Weighted cross-entropy for unbalanced classes."""
     if cfg.model.loss_fun == 'weighted_cross_entropy':
         # calculating label weights for weighted loss computation
         V = true.size(0)
@@ -24,6 +23,7 @@ def weighted_cross_entropy(pred, true):
             return F.nll_loss(pred, true, weight=weight), pred
         # binary
         else:
-            loss = F.binary_cross_entropy_with_logits(pred, true.float(),
-                                                      weight=weight[true])
+            loss = F.binary_cross_entropy_with_logits(
+                pred, true.float(), weight=weight[true]
+            )
             return loss, torch.sigmoid(pred)

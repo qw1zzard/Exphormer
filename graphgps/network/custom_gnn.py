@@ -1,5 +1,4 @@
 import torch
-import torch_geometric.graphgym.models.head  # noqa, register module
 import torch_geometric.graphgym.register as register
 from torch_geometric.graphgym.config import cfg
 from torch_geometric.graphgym.models.gnn import FeatureEncoder, GNNPreMP
@@ -22,20 +21,19 @@ class CustomGNN(torch.nn.Module):
         dim_in = self.encoder.dim_in
 
         if cfg.gnn.layers_pre_mp > 0:
-            self.pre_mp = GNNPreMP(
-                dim_in, cfg.gnn.dim_inner, cfg.gnn.layers_pre_mp)
+            self.pre_mp = GNNPreMP(dim_in, cfg.gnn.dim_inner, cfg.gnn.layers_pre_mp)
             dim_in = cfg.gnn.dim_inner
 
-        assert cfg.gnn.dim_inner == dim_in, \
-            "The inner and hidden dims must match."
+        assert cfg.gnn.dim_inner == dim_in, 'The inner and hidden dims must match.'
 
         conv_model = self.build_conv_model(cfg.gnn.layer_type)
         layers = []
         for _ in range(cfg.gnn.layers_mp):
-            layers.append(conv_model(dim_in,
-                                     dim_in,
-                                     dropout=cfg.gnn.dropout,
-                                     residual=cfg.gnn.residual))
+            layers.append(
+                conv_model(
+                    dim_in, dim_in, dropout=cfg.gnn.dropout, residual=cfg.gnn.residual
+                )
+            )
         self.gnn_layers = torch.nn.Sequential(*layers)
 
         GNNHead = register.head_dict[cfg.gnn.head]
@@ -47,7 +45,7 @@ class CustomGNN(torch.nn.Module):
         elif model_type == 'gineconv':
             return GINEConvLayer
         else:
-            raise ValueError("Model {} unavailable".format(model_type))
+            raise ValueError('Model {} unavailable'.format(model_type))
 
     def forward(self, batch):
         for module in self.children():

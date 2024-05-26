@@ -1,21 +1,21 @@
 import operator as op
-from copy import deepcopy
-from typing import Union, Callable, Optional, Dict, Any
 import warnings
+from copy import deepcopy
+from typing import Any, Callable, Dict, Optional, Union
 
 import torch
 from torchmetrics.functional import (
     accuracy,
+    auroc,
     average_precision,
     confusion_matrix,
     f1_score,
     fbeta_score,
-    precision_recall_curve,
-    precision,
-    recall,
-    auroc,
     mean_absolute_error,
     mean_squared_error,
+    precision,
+    precision_recall_curve,
+    recall,
 )
 from torchmetrics.utilities import reduce
 
@@ -26,12 +26,11 @@ class Thresholder:
     def __init__(
         self,
         threshold: float,
-        operator: str = "greater",
+        operator: str = 'greater',
         th_on_preds: bool = True,
         th_on_target: bool = False,
         target_to_int: bool = False,
     ):
-
         # Basic params
         self.threshold = threshold
         self.th_on_target = th_on_target
@@ -41,21 +40,23 @@ class Thresholder:
         # Operator can either be a string, or a callable
         if isinstance(operator, str):
             op_name = operator.lower()
-            if op_name in ["greater", "gt"]:
-                op_str = ">"
+            if op_name in ['greater', 'gt']:
+                op_str = '>'
                 operator = op.gt
-            elif op_name in ["lower", "lt"]:
-                op_str = "<"
+            elif op_name in ['lower', 'lt']:
+                op_str = '<'
                 operator = op.lt
             else:
-                raise ValueError(f"operator `{op_name}` not supported")
+                raise ValueError(f'operator `{op_name}` not supported')
         elif callable(operator):
             op_str = operator.__name__
         elif operator is None:
             pass
         else:
-            raise TypeError(f"operator must be either `str` or `callable`, "
-                            f"provided: `{type(operator)}`")
+            raise TypeError(
+                f'operator must be either `str` or `callable`, '
+                f'provided: `{type(operator)}`'
+            )
 
         self.operator = operator
         self.op_str = op_str
@@ -82,11 +83,12 @@ class Thresholder:
         Control how the class is printed
         """
 
-        return f"{self.op_str}{self.threshold}"
+        return f'{self.op_str}{self.threshold}'
 
 
-def pearsonr(preds: torch.Tensor, target: torch.Tensor,
-             reduction: str = "elementwise_mean") -> torch.Tensor:
+def pearsonr(
+    preds: torch.Tensor, target: torch.Tensor, reduction: str = 'elementwise_mean'
+) -> torch.Tensor:
     r"""
     Computes the pearsonr correlation.
 
@@ -115,8 +117,8 @@ def pearsonr(preds: torch.Tensor, target: torch.Tensor,
 
     shifted_x = preds - torch.mean(preds, dim=0)
     shifted_y = target - torch.mean(target, dim=0)
-    sigma_x = torch.sqrt(torch.sum(shifted_x ** 2, dim=0))
-    sigma_y = torch.sqrt(torch.sum(shifted_y ** 2, dim=0))
+    sigma_x = torch.sqrt(torch.sum(shifted_x**2, dim=0))
+    sigma_y = torch.sqrt(torch.sum(shifted_y**2, dim=0))
 
     pearson = torch.sum(shifted_x * shifted_y, dim=0) / (sigma_x * sigma_y + EPS)
     pearson = torch.clamp(pearson, min=-1, max=1)
@@ -125,9 +127,7 @@ def pearsonr(preds: torch.Tensor, target: torch.Tensor,
 
 
 def _get_rank(values):
-
-    arange = torch.arange(values.shape[0],
-                          dtype=values.dtype, device=values.device)
+    arange = torch.arange(values.shape[0], dtype=values.dtype, device=values.device)
 
     val_sorter = torch.argsort(values, dim=0)
     val_rank = torch.empty_like(values)
@@ -137,14 +137,17 @@ def _get_rank(values):
         for ii in range(val_rank.shape[1]):
             val_rank[val_sorter[:, ii], ii] = arange
     else:
-        raise ValueError(f"Only supports tensors of dimensions 1 and 2, "
-                         f"provided dim=`{values.ndim}`")
+        raise ValueError(
+            f'Only supports tensors of dimensions 1 and 2, '
+            f'provided dim=`{values.ndim}`'
+        )
 
     return val_rank
 
 
-def spearmanr(preds: torch.Tensor, target: torch.Tensor,
-              reduction: str = "elementwise_mean") -> torch.Tensor:
+def spearmanr(
+    preds: torch.Tensor, target: torch.Tensor, reduction: str = 'elementwise_mean'
+) -> torch.Tensor:
     r"""
     Computes the spearmanr correlation.
 
@@ -171,22 +174,22 @@ def spearmanr(preds: torch.Tensor, target: torch.Tensor,
 
 
 METRICS_CLASSIFICATION = {
-    "accuracy": accuracy,
-    "averageprecision": average_precision,
-    "auroc": auroc,
-    "confusionmatrix": confusion_matrix,
-    "f1": f1_score,
-    "fbeta": fbeta_score,
-    "precisionrecallcurve": precision_recall_curve,
-    "precision": precision,
-    "recall": recall,
+    'accuracy': accuracy,
+    'averageprecision': average_precision,
+    'auroc': auroc,
+    'confusionmatrix': confusion_matrix,
+    'f1': f1_score,
+    'fbeta': fbeta_score,
+    'precisionrecallcurve': precision_recall_curve,
+    'precision': precision,
+    'recall': recall,
 }
 
 METRICS_REGRESSION = {
-    "mae": mean_absolute_error,
-    "mse": mean_squared_error,
-    "pearsonr": pearsonr,
-    "spearmanr": spearmanr,
+    'mae': mean_absolute_error,
+    'mse': mean_squared_error,
+    'pearsonr': pearsonr,
+    'spearmanr': spearmanr,
 }
 
 METRICS_DICT = deepcopy(METRICS_CLASSIFICATION)
@@ -267,19 +270,23 @@ class MetricWrapper:
         elif isinstance(self.target_nan_mask, (int, float)):
             target = target.clone()
             target[torch.isnan(target)] = self.target_nan_mask
-        elif self.target_nan_mask == "ignore-flatten":
+        elif self.target_nan_mask == 'ignore-flatten':
             target = target[~target_nans]
             preds = preds[~target_nans]
-        elif self.target_nan_mask == "ignore-mean-label":
-            target_list = [target[..., ii][~target_nans[..., ii]] for ii in range(target.shape[-1])]
-            preds_list = [preds[..., ii][~target_nans[..., ii]] for ii in range(preds.shape[-1])]
+        elif self.target_nan_mask == 'ignore-mean-label':
+            target_list = [
+                target[..., ii][~target_nans[..., ii]] for ii in range(target.shape[-1])
+            ]
+            preds_list = [
+                preds[..., ii][~target_nans[..., ii]] for ii in range(preds.shape[-1])
+            ]
             target = target_list
             preds = preds_list
         else:
-            raise ValueError(f"Invalid option `{self.target_nan_mask}`")
+            raise ValueError(f'Invalid option `{self.target_nan_mask}`')
 
-        if self.target_nan_mask == "ignore-mean-label":
-            warnings.filterwarnings("error")
+        if self.target_nan_mask == 'ignore-mean-label':
+            warnings.filterwarnings('error')
             # Compute the metric for each column, and output nan if there's an error on a given column
             metric_val = []
             for ii in range(len(target)):
@@ -298,19 +305,20 @@ class MetricWrapper:
                     # Catching the Warning risen by torchmetrics.functional.auroc
                     # already prevents the 0 to be appended, nothing else needs
                     # to be done.
-                    if str(e) == 'No positive samples in targets, ' \
-                                 'true positive value should be meaningless. ' \
-                                 'Returning zero tensor in true positive score':
+                    if (
+                        str(e) == 'No positive samples in targets, '
+                        'true positive value should be meaningless. '
+                        'Returning zero tensor in true positive score'
+                    ):
                         pass
                     else:
                         print(e)
-            warnings.filterwarnings("default")
+            warnings.filterwarnings('default')
 
             # Average the metric
             # metric_val = torch.nanmean(torch.stack(metric_val))  # PyTorch1.10
             x = torch.stack(metric_val)  # PyTorch<=1.9
-            metric_val = torch.div(torch.nansum(x),
-                                   (~torch.isnan(x)).count_nonzero())
+            metric_val = torch.div(torch.nansum(x), (~torch.isnan(x)).count_nonzero())
 
         else:
             metric_val = self.metric(preds, target, **self.kwargs)
@@ -326,8 +334,8 @@ class MetricWrapper:
         r"""
         Control how the class is printed
         """
-        full_str = f"{self.metric.__name__}"
+        full_str = f'{self.metric.__name__}'
         if self.thresholder is not None:
-            full_str += f"({self.thresholder})"
+            full_str += f'({self.thresholder})'
 
         return full_str

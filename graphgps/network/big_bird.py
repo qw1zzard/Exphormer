@@ -21,12 +21,12 @@ class BigBird(torch.nn.Module):
         dim_in = self.encoder.dim_in
 
         if cfg.gnn.layers_pre_mp > 0:
-            self.pre_mp = GNNPreMP(
-                dim_in, cfg.gnn.dim_inner, cfg.gnn.layers_pre_mp)
+            self.pre_mp = GNNPreMP(dim_in, cfg.gnn.dim_inner, cfg.gnn.layers_pre_mp)
             dim_in = cfg.gnn.dim_inner
 
-        assert cfg.gt.dim_hidden == cfg.gnn.dim_inner == dim_in, \
-            "The inner and hidden dims must match."
+        assert (
+            cfg.gt.dim_hidden == cfg.gnn.dim_inner == dim_in
+        ), 'The inner and hidden dims must match.'
 
         # Copy main Transformer hyperparams to the BigBird config.
         cfg.gt.bigbird.layers = cfg.gt.layers

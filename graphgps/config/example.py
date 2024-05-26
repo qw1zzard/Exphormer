@@ -4,10 +4,10 @@ from yacs.config import CfgNode as CN
 
 @register_config('example')
 def set_cfg_example(cfg):
-    r'''
+    r"""
     This function sets the default config value for customized options
     :return: customized configuration use by the experiment.
-    '''
+    """
 
     # ----------------------------------------------------------------------- #
     # Customized options

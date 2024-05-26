@@ -1,5 +1,4 @@
 import torch.nn as nn
-
 import torch_geometric.graphgym.register as register
 from torch_geometric.graphgym import cfg
 from torch_geometric.graphgym.register import register_head
@@ -24,7 +23,7 @@ class OGBCodeGraphHead(nn.Module):
         self.max_seq_len = 5
 
         if self.L != 1:
-            raise ValueError(f"Multilayer prediction heads are not supported.")
+            raise ValueError('Multilayer prediction heads are not supported.')
 
         self.graph_pred_linear_list = nn.ModuleList()
         for i in range(self.max_seq_len):

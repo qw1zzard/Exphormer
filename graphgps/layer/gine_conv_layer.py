@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric.nn as pyg_nn
-
 from torch_geometric.graphgym.models.layer import LayerConfig
 from torch_geometric.graphgym.register import register_layer
 from torch_geometric.nn import Linear as Linear_pyg
@@ -15,7 +14,8 @@ class GINEConvESLapPE(pyg_nn.conv.MessagePassing):
     according to equiv. stable PEG-layer with Laplacian Eigenmap (LapPE):
         ICLR 2022 https://openreview.net/pdf?id=e95i1IHcWj
     """
-    def __init__(self, nn, eps=0., train_eps=False, edge_dim=None, **kwargs):
+
+    def __init__(self, nn, eps=0.0, train_eps=False, edge_dim=None, **kwargs):
         kwargs.setdefault('aggr', 'add')
         super().__init__(**kwargs)
         self.nn = nn
@@ -42,9 +42,11 @@ class GINEConvESLapPE(pyg_nn.conv.MessagePassing):
         # Handling for Equivariant and Stable PE using LapPE
         # ICLR 2022 https://openreview.net/pdf?id=e95i1IHcWj
         self.mlp_r_ij = torch.nn.Sequential(
-            torch.nn.Linear(1, out_dim), torch.nn.ReLU(),
+            torch.nn.Linear(1, out_dim),
+            torch.nn.ReLU(),
             torch.nn.Linear(out_dim, 1),
-            torch.nn.Sigmoid())
+            torch.nn.Sigmoid(),
+        )
 
     def reset_parameters(self):
         pyg_nn.inits.reset(self.nn)
@@ -58,8 +60,9 @@ class GINEConvESLapPE(pyg_nn.conv.MessagePassing):
         #     x: OptPairTensor = (x, x)
 
         # propagate_type: (x: OptPairTensor, edge_attr: OptTensor)
-        out = self.propagate(edge_index, x=x, edge_attr=edge_attr,
-                             PE=pe_LapPE, size=size)
+        out = self.propagate(
+            edge_index, x=x, edge_attr=edge_attr, PE=pe_LapPE, size=size
+        )
 
         x_r = x[1]
         if x_r is not None:
@@ -69,9 +72,11 @@ class GINEConvESLapPE(pyg_nn.conv.MessagePassing):
 
     def message(self, x_j, edge_attr, PE_i, PE_j):
         if self.lin is None and x_j.size(-1) != edge_attr.size(-1):
-            raise ValueError("Node and edge feature dimensionalities do not "
-                             "match. Consider setting the 'edge_dim' "
-                             "attribute of 'GINEConv'")
+            raise ValueError(
+                'Node and edge feature dimensionalities do not '
+                "match. Consider setting the 'edge_dim' "
+                "attribute of 'GINEConv'"
+            )
 
         if self.lin is not None:
             edge_attr = self.lin(edge_attr)
@@ -88,8 +93,8 @@ class GINEConvESLapPE(pyg_nn.conv.MessagePassing):
 
 
 class GINEConvLayer(nn.Module):
-    """Graph Isomorphism Network with Edge features (GINE) layer.
-    """
+    """Graph Isomorphism Network with Edge features (GINE) layer."""
+
     def __init__(self, dim_in, dim_out, dropout, residual):
         super().__init__()
         self.dim_in = dim_in
@@ -98,8 +103,8 @@ class GINEConvLayer(nn.Module):
         self.residual = residual
 
         gin_nn = nn.Sequential(
-            pyg_nn.Linear(dim_in, dim_out), nn.ReLU(),
-            pyg_nn.Linear(dim_out, dim_out))
+            pyg_nn.Linear(dim_in, dim_out), nn.ReLU(), pyg_nn.Linear(dim_out, dim_out)
+        )
         self.model = pyg_nn.GINEConv(gin_nn)
 
     def forward(self, batch):
@@ -118,13 +123,15 @@ class GINEConvLayer(nn.Module):
 
 @register_layer('gineconv')
 class GINEConvGraphGymLayer(nn.Module):
-    """Graph Isomorphism Network with Edge features (GINE) layer.
-    """
+    """Graph Isomorphism Network with Edge features (GINE) layer."""
+
     def __init__(self, layer_config: LayerConfig, **kwargs):
         super().__init__()
         gin_nn = nn.Sequential(
-            Linear_pyg(layer_config.dim_in, layer_config.dim_out), nn.ReLU(),
-            Linear_pyg(layer_config.dim_out, layer_config.dim_out))
+            Linear_pyg(layer_config.dim_in, layer_config.dim_out),
+            nn.ReLU(),
+            Linear_pyg(layer_config.dim_out, layer_config.dim_out),
+        )
         self.model = pyg_nn.GINEConv(gin_nn)
 
     def forward(self, batch):

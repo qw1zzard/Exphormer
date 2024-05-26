@@ -10,7 +10,7 @@ class EREdgeEncoder(torch.nn.Module):
         super().__init__()
 
         dim_in = cfg.gt.dim_edge  # Expected final edge_dim
-        
+
         pecfg = cfg.posenc_ERE
         n_layers = pecfg.layers  # Num. layers in PE encoder model
         self.pass_as_var = pecfg.pass_as_var  # Pass PE also as a separate variable
@@ -22,7 +22,7 @@ class EREdgeEncoder(torch.nn.Module):
 
         if not self.use_edge_attr:
             assert emb_dim == dim_in
-        
+
         layers = []
         layers.append(nn.Linear(1, emb_dim))
         layers.append(nn.ReLU())
@@ -36,13 +36,13 @@ class EREdgeEncoder(torch.nn.Module):
         ere = self.er_encoder(batch.er_edge)
         if self.expand_edge_attr:
             batch.edge_attr = self.linear_x(batch.edge_attr)
-        
+
         if self.use_edge_attr:
             batch.edge_attr = torch.cat([batch.edge_attr, ere], dim=1)
         else:
             batch.edge_attr = ere
-        
+
         if self.pass_as_var:
             batch.er_edge = ere
-        
+
         return batch

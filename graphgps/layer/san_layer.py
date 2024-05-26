@@ -14,8 +14,16 @@ class MultiHeadAttentionLayer(nn.Module):
     https://github.com/DevinKreuzer/SAN/blob/main/layers/graph_transformer_layer.py
     """
 
-    def __init__(self, gamma, in_dim, out_dim, num_heads, secondary_edges,
-                 fake_edge_emb, use_bias):
+    def __init__(
+        self,
+        gamma,
+        in_dim,
+        out_dim,
+        num_heads,
+        secondary_edges,
+        fake_edge_emb,
+        use_bias,
+    ):
         super().__init__()
 
         self.out_dim = out_dim
@@ -49,8 +57,12 @@ class MultiHeadAttentionLayer(nn.Module):
             else:
                 fake_edge_index = getattr(batch, self.secondary_edges)
 
-            src_2 = batch.K_2h[fake_edge_index[0]]  # (num fake edges) x num_heads x out_dim
-            dest_2 = batch.Q_2h[fake_edge_index[1]]  # (num fake edges) x num_heads x out_dim
+            src_2 = batch.K_2h[
+                fake_edge_index[0]
+            ]  # (num fake edges) x num_heads x out_dim
+            dest_2 = batch.Q_2h[
+                fake_edge_index[1]
+            ]  # (num fake edges) x num_heads x out_dim
             score_2 = torch.mul(src_2, dest_2)
 
             # Scale scores by sqrt(d)
@@ -65,17 +77,27 @@ class MultiHeadAttentionLayer(nn.Module):
 
         if self.secondary_edges is not None:
             # softmax and scaling by gamma
-            score = torch.exp(score.sum(-1, keepdim=True).clamp(-5, 5))  # (num real edges) x num_heads x 1
-            score_2 = torch.exp(score_2.sum(-1, keepdim=True).clamp(-5, 5))  # (num fake edges) x num_heads x 1
+            score = torch.exp(
+                score.sum(-1, keepdim=True).clamp(-5, 5)
+            )  # (num real edges) x num_heads x 1
+            score_2 = torch.exp(
+                score_2.sum(-1, keepdim=True).clamp(-5, 5)
+            )  # (num fake edges) x num_heads x 1
             score = score / (self.gamma + 1)
             score_2 = self.gamma * score_2 / (self.gamma + 1)
         else:
-            score = torch.exp(score.sum(-1, keepdim=True).clamp(-5, 5))  # (num real edges) x num_heads x 1
+            score = torch.exp(
+                score.sum(-1, keepdim=True).clamp(-5, 5)
+            )  # (num real edges) x num_heads x 1
 
         # Apply attention score to each source node to create edge messages
-        msg = batch.V_h[batch.edge_index[0]] * score  # (num real edges) x num_heads x out_dim
+        msg = (
+            batch.V_h[batch.edge_index[0]] * score
+        )  # (num real edges) x num_heads x out_dim
         # Add-up real msgs in destination nodes as given by batch.edge_index[1]
-        batch.wV = torch.zeros_like(batch.V_h)  # (num nodes in batch) x num_heads x out_dim
+        batch.wV = torch.zeros_like(
+            batch.V_h
+        )  # (num nodes in batch) x num_heads x out_dim
         scatter(msg, batch.edge_index[1], dim=0, out=batch.wV, reduce='add')
 
         if self.secondary_edges is not None:
@@ -85,7 +107,9 @@ class MultiHeadAttentionLayer(nn.Module):
             scatter(msg_2, fake_edge_index[1], dim=0, out=batch.wV, reduce='add')
 
         # Compute attention normalization coefficient
-        batch.Z = score.new_zeros(batch.size(0), self.num_heads, 1)  # (num nodes in batch) x num_heads x 1
+        batch.Z = score.new_zeros(
+            batch.size(0), self.num_heads, 1
+        )  # (num nodes in batch) x num_heads x 1
         scatter(score, batch.edge_index[1], dim=0, out=batch.Z, reduce='add')
         if self.secondary_edges is not None:
             scatter(score_2, fake_edge_index[1], dim=0, out=batch.Z, reduce='add')
@@ -131,10 +155,20 @@ class SANLayer(nn.Module):
     https://github.com/DevinKreuzer/SAN/blob/main/layers/graph_transformer_layer.py
     """
 
-    def __init__(self, gamma, in_dim, out_dim, num_heads, secondary_edges,
-                 fake_edge_emb, dropout=0.0,
-                 layer_norm=False, batch_norm=True,
-                 residual=True, use_bias=False):
+    def __init__(
+        self,
+        gamma,
+        in_dim,
+        out_dim,
+        num_heads,
+        secondary_edges,
+        fake_edge_emb,
+        dropout=0.0,
+        layer_norm=False,
+        batch_norm=True,
+        residual=True,
+        use_bias=False,
+    ):
         super().__init__()
 
         self.in_channels = in_dim
@@ -144,13 +178,15 @@ class SANLayer(nn.Module):
         self.residual = residual
         self.layer_norm = layer_norm
         self.batch_norm = batch_norm
-        self.attention = MultiHeadAttentionLayer(gamma=gamma,
-                                                 in_dim=in_dim,
-                                                 out_dim=out_dim // num_heads,
-                                                 num_heads=num_heads,
-                                                 secondary_edges=secondary_edges,
-                                                 fake_edge_emb=fake_edge_emb,
-                                                 use_bias=use_bias)
+        self.attention = MultiHeadAttentionLayer(
+            gamma=gamma,
+            in_dim=in_dim,
+            out_dim=out_dim // num_heads,
+            num_heads=num_heads,
+            secondary_edges=secondary_edges,
+            fake_edge_emb=fake_edge_emb,
+            use_bias=use_bias,
+        )
 
         self.O_h = nn.Linear(out_dim, out_dim)
 
@@ -217,4 +253,7 @@ class SANLayer(nn.Module):
         return '{}(in_channels={}, out_channels={}, heads={}, residual={})'.format(
             self.__class__.__name__,
             self.in_channels,
-            self.out_channels, self.num_heads, self.residual)
+            self.out_channels,
+            self.num_heads,
+            self.residual,
+        )

@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-import torch_geometric.graphgym.models.head  # noqa, register module
 import torch_geometric.graphgym.register as register
 import torch_geometric.nn as pyg_nn
 from torch_geometric.graphgym.config import cfg
@@ -28,7 +26,7 @@ class ExampleGNN(torch.nn.Module):
             return pyg_nn.GCNConv
         elif model_type == 'GAT':
             return pyg_nn.GATConv
-        elif model_type == "GraphSage":
+        elif model_type == 'GraphSage':
             return pyg_nn.SAGEConv
         else:
             raise ValueError(f'Model {model_type} unavailable')

@@ -25,7 +25,7 @@ class ERNodeEncoder(torch.nn.Module):
         dim_pe = pecfg.dim_pe  # Size of Laplace PE embedding
         model_type = pecfg.model  # Encoder NN model type for DEs
         if model_type not in ['Transformer', 'DeepSet', 'Linear']:
-            raise ValueError(f"Unexpected PE model {model_type}")
+            raise ValueError(f'Unexpected PE model {model_type}')
         self.model_type = model_type
         n_layers = pecfg.layers  # Num. layers in PE encoder model
         n_heads = pecfg.n_heads  # Num. attention heads in Trf PE encoder
@@ -35,8 +35,10 @@ class ERNodeEncoder(torch.nn.Module):
         er_dim = pecfg.er_dim
 
         if dim_emb - dim_pe < 1:
-            raise ValueError(f"ER_Node size {dim_pe} is too large for "
-                             f"desired embedding size of {dim_emb}.")
+            raise ValueError(
+                f'ER_Node size {dim_pe} is too large for '
+                f'desired embedding size of {dim_emb}.'
+            )
 
         if expand_x:
             self.linear_x = nn.Linear(dim_in, dim_emb - dim_pe)
@@ -50,11 +52,12 @@ class ERNodeEncoder(torch.nn.Module):
                 # Initial projection of each value of ER embedding
                 self.linear_A = nn.Linear(1, dim_pe)
                 # Transformer model for ER_Node
-                encoder_layer = nn.TransformerEncoderLayer(d_model=dim_pe,
-                                                        nhead=n_heads,
-                                                        batch_first=True)
-                self.pe_encoder = nn.TransformerEncoder(encoder_layer,
-                                                        num_layers=n_layers)
+                encoder_layer = nn.TransformerEncoderLayer(
+                    d_model=dim_pe, nhead=n_heads, batch_first=True
+                )
+                self.pe_encoder = nn.TransformerEncoder(
+                    encoder_layer, num_layers=n_layers
+                )
             else:
                 # DeepSet model for ER_Node
                 layers = []
@@ -85,11 +88,12 @@ class ERNodeEncoder(torch.nn.Module):
                 layers.append(nn.ReLU())
             self.post_mlp = nn.Sequential(*layers)
 
-
     def forward(self, batch):
         if not hasattr(batch, 'er_emb'):
-            raise ValueError("Precomputed ER embeddings required for calculating ER Node Encodings")
-        
+            raise ValueError(
+                'Precomputed ER embeddings required for calculating ER Node Encodings'
+            )
+
         pos_enc = batch.er_emb  # N * er_dim
 
         if self.training:

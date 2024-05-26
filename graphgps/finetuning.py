@@ -13,7 +13,7 @@ def get_final_pretrained_ckpt(ckpt_dir):
         epochs = [int(name.split('.')[0]) for name in names]
         final_epoch = max(epochs)
     else:
-        raise FileNotFoundError(f"Pretrained model dir not found: {ckpt_dir}")
+        raise FileNotFoundError(f'Pretrained model dir not found: {ckpt_dir}')
     return osp.join(ckpt_dir, f'{final_epoch}.ckpt')
 
 
@@ -24,16 +24,18 @@ def compare_cfg(cfg_main, cfg_secondary, field_name, strict=False):
         secondary_val = secondary_val[f]
     if main_val != secondary_val:
         if strict:
-            raise ValueError(f"Main and pretrained configs must match on "
-                             f"'{field_name}'")
+            raise ValueError(
+                f'Main and pretrained configs must match on ' f"'{field_name}'"
+            )
         else:
-            logging.warning(f"Pretrained models '{field_name}' differs, "
-                            f"using: {main_val}")
+            logging.warning(
+                f"Pretrained models '{field_name}' differs, " f'using: {main_val}'
+            )
 
 
 def set_new_cfg_allowed(config, is_new_allowed):
-    """ Set YACS config (and recursively its subconfigs) to allow merging
-        new keys from other configs.
+    """Set YACS config (and recursively its subconfigs) to allow merging
+    new keys from other configs.
     """
     config.__dict__[CfgNode.NEW_ALLOWED] = is_new_allowed
     # Recursively set new_allowed state
@@ -48,19 +50,20 @@ def set_new_cfg_allowed(config, is_new_allowed):
 def load_pretrained_model_cfg(cfg):
     pretrained_cfg_fname = osp.join(cfg.pretrained.dir, 'config.yaml')
     if not os.path.isfile(pretrained_cfg_fname):
-        FileNotFoundError(f"Pretrained model config not found: "
-                          f"{pretrained_cfg_fname}")
+        FileNotFoundError(
+            f'Pretrained model config not found: ' f'{pretrained_cfg_fname}'
+        )
 
-    logging.info(f"[*] Updating cfg from pretrained model: "
-                 f"{pretrained_cfg_fname}")
+    logging.info(f'[*] Updating cfg from pretrained model: ' f'{pretrained_cfg_fname}')
 
     pretrained_cfg = CfgNode()
     set_cfg(pretrained_cfg)
     set_new_cfg_allowed(pretrained_cfg, True)
     pretrained_cfg.merge_from_file(pretrained_cfg_fname)
 
-    assert cfg.model.type == 'GPSModel', \
-        "Fine-tuning regime is untested for other model types."
+    assert (
+        cfg.model.type == 'GPSModel'
+    ), 'Fine-tuning regime is untested for other model types.'
     compare_cfg(cfg, pretrained_cfg, 'model.type', strict=True)
     compare_cfg(cfg, pretrained_cfg, 'model.graph_pooling')
     compare_cfg(cfg, pretrained_cfg, 'model.edge_decoding')
@@ -96,9 +99,10 @@ def load_pretrained_model_cfg(cfg):
     return cfg
 
 
-def init_model_from_pretrained(model, pretrained_dir,
-                               freeze_main=False, reset_prediction_head=True):
-    """ Copy model parameters from pretrained model except the prediction head.
+def init_model_from_pretrained(
+    model, pretrained_dir, freeze_main=False, reset_prediction_head=True
+):
+    """Copy model parameters from pretrained model except the prediction head.
 
     Args:
         model: Initialized model with random weights.
@@ -114,7 +118,7 @@ def init_model_from_pretrained(model, pretrained_dir,
     from torch_geometric.graphgym.checkpoint import MODEL_STATE
 
     ckpt_file = get_final_pretrained_ckpt(osp.join(pretrained_dir, '0', 'ckpt'))
-    logging.info(f"[*] Loading from pretrained model: {ckpt_file}")
+    logging.info(f'[*] Loading from pretrained model: {ckpt_file}')
 
     ckpt = torch.load(ckpt_file)
     pretrained_dict = ckpt[MODEL_STATE]
@@ -127,8 +131,9 @@ def init_model_from_pretrained(model, pretrained_dir,
 
     if reset_prediction_head:
         # Filter out prediction head parameter keys.
-        pretrained_dict = {k: v for k, v in pretrained_dict.items()
-                           if not k.startswith('post_mp')}
+        pretrained_dict = {
+            k: v for k, v in pretrained_dict.items() if not k.startswith('post_mp')
+        }
     # Overwrite entries in the existing state dict.
     model_dict.update(pretrained_dict)
     # Load the new state dict.

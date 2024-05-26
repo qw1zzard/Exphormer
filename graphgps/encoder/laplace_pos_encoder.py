@@ -25,7 +25,7 @@ class LapPENodeEncoder(torch.nn.Module):
         dim_pe = pecfg.dim_pe  # Size of Laplace PE embedding
         model_type = pecfg.model  # Encoder NN model type for PEs
         if model_type not in ['Transformer', 'DeepSet']:
-            raise ValueError(f"Unexpected PE model {model_type}")
+            raise ValueError(f'Unexpected PE model {model_type}')
         self.model_type = model_type
         n_layers = pecfg.layers  # Num. layers in PE encoder model
         n_heads = pecfg.n_heads  # Num. attention heads in Trf PE encoder
@@ -35,8 +35,10 @@ class LapPENodeEncoder(torch.nn.Module):
         self.pass_as_var = pecfg.pass_as_var  # Pass PE also as a separate variable
 
         if dim_emb - dim_pe < 1:
-            raise ValueError(f"LapPE size {dim_pe} is too large for "
-                             f"desired embedding size of {dim_emb}.")
+            raise ValueError(
+                f'LapPE size {dim_pe} is too large for '
+                f'desired embedding size of {dim_emb}.'
+            )
 
         if expand_x:
             self.linear_x = nn.Linear(dim_in, dim_emb - dim_pe)
@@ -51,11 +53,10 @@ class LapPENodeEncoder(torch.nn.Module):
 
         if model_type == 'Transformer':
             # Transformer model for LapPE
-            encoder_layer = nn.TransformerEncoderLayer(d_model=dim_pe,
-                                                       nhead=n_heads,
-                                                       batch_first=True)
-            self.pe_encoder = nn.TransformerEncoder(encoder_layer,
-                                                    num_layers=n_layers)
+            encoder_layer = nn.TransformerEncoderLayer(
+                d_model=dim_pe, nhead=n_heads, batch_first=True
+            )
+            self.pe_encoder = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
         else:
             # DeepSet model for LapPE
             layers = []
@@ -88,12 +89,13 @@ class LapPENodeEncoder(torch.nn.Module):
                 layers.append(nn.ReLU())
             self.post_mlp = nn.Sequential(*layers)
 
-
     def forward(self, batch):
         if not (hasattr(batch, 'EigVals') and hasattr(batch, 'EigVecs')):
-            raise ValueError("Precomputed eigen values and vectors are "
-                             f"required for {self.__class__.__name__}; "
-                             "set config 'posenc_LapPE.enable' to True")
+            raise ValueError(
+                'Precomputed eigen values and vectors are '
+                f'required for {self.__class__.__name__}; '
+                "set config 'posenc_LapPE.enable' to True"
+            )
         EigVals = batch.EigVals
         EigVecs = batch.EigVecs
 
@@ -103,7 +105,9 @@ class LapPENodeEncoder(torch.nn.Module):
             sign_flip[sign_flip < 0.5] = -1.0
             EigVecs = EigVecs * sign_flip.unsqueeze(0)
 
-        pos_enc = torch.cat((EigVecs.unsqueeze(2), EigVals), dim=2) # (Num nodes) x (Num Eigenvectors) x 2
+        pos_enc = torch.cat(
+            (EigVecs.unsqueeze(2), EigVals), dim=2
+        )  # (Num nodes) x (Num Eigenvectors) x 2
         empty_mask = torch.isnan(pos_enc)  # (Num nodes) x (Num Eigenvectors) x 2
 
         pos_enc[empty_mask] = 0  # (Num nodes) x (Num Eigenvectors) x 2
@@ -113,14 +117,14 @@ class LapPENodeEncoder(torch.nn.Module):
 
         # PE encoder: a Transformer or DeepSet model
         if self.model_type == 'Transformer':
-            pos_enc = self.pe_encoder(src=pos_enc,
-                                      src_key_padding_mask=empty_mask[:, :, 0])
+            pos_enc = self.pe_encoder(
+                src=pos_enc, src_key_padding_mask=empty_mask[:, :, 0]
+            )
         else:
             pos_enc = self.pe_encoder(pos_enc)
 
         # Remove masked sequences; must clone before overwriting masked elements
-        pos_enc = pos_enc.clone().masked_fill_(empty_mask[:, :, 0].unsqueeze(2),
-                                               0.)
+        pos_enc = pos_enc.clone().masked_fill_(empty_mask[:, :, 0].unsqueeze(2), 0.0)
 
         # Sum pooling
         pos_enc = torch.sum(pos_enc, 1, keepdim=False)  # (Num nodes) x dim_pe

@@ -1,12 +1,16 @@
-from typing import Optional, Callable, List
-
-import os
 import glob
+import os
 import os.path as osp
+from typing import Callable, List, Optional
 
 import torch
-from torch_geometric.data import (InMemoryDataset, Data, download_url,
-                                  extract_tar, extract_zip)
+from torch_geometric.data import (
+    Data,
+    InMemoryDataset,
+    download_url,
+    extract_tar,
+    extract_zip,
+)
 from torch_geometric.utils import remove_isolated_nodes
 
 """
@@ -17,6 +21,7 @@ TODO: Delete and use PyG's version once it is part of a released version.
 At the time of writing this class is in the main PyG github branch but is not
  included in the current latest released version 2.0.2.
 """
+
 
 class MalNetTiny(InMemoryDataset):
     r"""The MalNet Tiny dataset from the
@@ -45,9 +50,13 @@ class MalNetTiny(InMemoryDataset):
     # 70/10/20 train, val, test split by type
     split_url = 'http://malnet.cc.gatech.edu/split-info/split_info_tiny.zip'
 
-    def __init__(self, root: str, transform: Optional[Callable] = None,
-                 pre_transform: Optional[Callable] = None,
-                 pre_filter: Optional[Callable] = None):
+    def __init__(
+        self,
+        root: str,
+        transform: Optional[Callable] = None,
+        pre_transform: Optional[Callable] = None,
+        pre_filter: Optional[Callable] = None,
+    ):
         super().__init__(root, transform, pre_transform, pre_filter)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
@@ -72,8 +81,9 @@ class MalNetTiny(InMemoryDataset):
         data_list = []
         split_dict = {'train': [], 'valid': [], 'test': []}
 
-        parse = lambda f: set([x.split('/')[-1]
-                               for x in f.read().split('\n')[:-1]])  # -1 for empty line at EOF
+        parse = lambda f: set(
+            [x.split('/')[-1] for x in f.read().split('\n')[:-1]]
+        )  # -1 for empty line at EOF
         split_dir = osp.join(self.raw_dir, 'split_info_tiny', 'type')
         with open(osp.join(split_dir, 'train.txt'), 'r') as f:
             train_names = parse(f)

@@ -3,7 +3,6 @@ from typing import Callable, List, Optional
 
 import numpy as np
 import torch
-
 from torch_geometric.data import InMemoryDataset, download_url
 from torch_geometric.io import read_planetoid_data
 
@@ -78,13 +77,22 @@ class Planetoid(InMemoryDataset):
     """
 
     url = 'https://github.com/kimiyoung/planetoid/raw/master/data'
-    geom_gcn_url = ('https://raw.githubusercontent.com/graphdml-uiuc-jlu/'
-                    'geom-gcn/master')
+    geom_gcn_url = (
+        'https://raw.githubusercontent.com/graphdml-uiuc-jlu/' 'geom-gcn/master'
+    )
 
-    def __init__(self, root: str, name: str, split: str = "public",
-                 num_train_per_class: int = 20, num_val: int = 500,
-                 num_test: int = 1000, transform: Optional[Callable] = None,
-                 pre_transform: Optional[Callable] = None, train_percent = 0.6):
+    def __init__(
+        self,
+        root: str,
+        name: str,
+        split: str = 'public',
+        num_train_per_class: int = 20,
+        num_val: int = 500,
+        num_test: int = 1000,
+        transform: Optional[Callable] = None,
+        pre_transform: Optional[Callable] = None,
+        train_percent=0.6,
+    ):
         self.name = name
 
         self.split = split.lower()
@@ -104,13 +112,13 @@ class Planetoid(InMemoryDataset):
             data.train_mask.fill_(False)
             for c in range(self.num_classes):
                 idx = (data.y == c).nonzero(as_tuple=False).view(-1)
-                idx = idx[torch.randperm(idx.size(0))[:int(len(idx) * train_percent)]]
+                idx = idx[torch.randperm(idx.size(0))[: int(len(idx) * train_percent)]]
                 data.train_mask[idx] = True
 
             remaining = (~data.train_mask).nonzero(as_tuple=False).view(-1)
             remaining = remaining[torch.randperm(remaining.size(0))]
 
-            val_index = int(len(remaining)*0.5)
+            val_index = int(len(remaining) * 0.5)
             data.val_mask.fill_(False)
             data.val_mask[remaining[:val_index]] = True
 

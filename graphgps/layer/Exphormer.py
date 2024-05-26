@@ -1,20 +1,15 @@
 import numpy as np
 import torch
-import math
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_scatter import scatter
-from torch.nn.init import constant_, xavier_normal_, xavier_uniform_
-
-from torch_geometric.graphgym.models.layer import LayerConfig
-from torch_geometric.graphgym.config import cfg
 from torch_geometric.graphgym.register import register_layer
-
+from torch_scatter import scatter
 
 
 class ExphormerAttention(nn.Module):
-
-    def __init__(self, in_dim, out_dim, num_heads, use_bias, dim_edge=None, use_virt_nodes=False):
+    def __init__(
+        self, in_dim, out_dim, num_heads, use_bias, dim_edge=None, use_virt_nodes=False
+    ):
         super().__init__()
 
         if out_dim % num_heads != 0:
@@ -41,8 +36,12 @@ class ExphormerAttention(nn.Module):
     #     xavier_uniform_(self.E)
 
     def propagate_attention(self, batch, edge_index):
-        src = batch.K_h[edge_index[0].to(torch.long)]  # (num edges) x num_heads x out_dim
-        dest = batch.Q_h[edge_index[1].to(torch.long)]  # (num edges) x num_heads x out_dim
+        src = batch.K_h[
+            edge_index[0].to(torch.long)
+        ]  # (num edges) x num_heads x out_dim
+        dest = batch.Q_h[
+            edge_index[1].to(torch.long)
+        ]  # (num edges) x num_heads x out_dim
         score = torch.mul(src, dest)  # element-wise multiplication
 
         # Scale scores by sqrt(d)
@@ -50,16 +49,24 @@ class ExphormerAttention(nn.Module):
 
         # Use available edge features to modify the scores for edges
         score = torch.mul(score, batch.E)  # (num real edges) x num_heads x out_dim
-        score = torch.exp(score.sum(-1, keepdim=True).clamp(-5, 5))  # (num real edges) x num_heads x 1
+        score = torch.exp(
+            score.sum(-1, keepdim=True).clamp(-5, 5)
+        )  # (num real edges) x num_heads x 1
 
         # Apply attention score to each source node to create edge messages
-        msg = batch.V_h[edge_index[0].to(torch.long)] * score  # (num real edges) x num_heads x out_dim
+        msg = (
+            batch.V_h[edge_index[0].to(torch.long)] * score
+        )  # (num real edges) x num_heads x out_dim
         # Add-up real msgs in destination nodes as given by batch.edge_index[1]
-        batch.wV = torch.zeros_like(batch.V_h)  # (num nodes in batch) x num_heads x out_dim
+        batch.wV = torch.zeros_like(
+            batch.V_h
+        )  # (num nodes in batch) x num_heads x out_dim
         scatter(msg, edge_index[1], dim=0, out=batch.wV, reduce='add')
 
         # Compute attention normalization coefficient
-        batch.Z = score.new_zeros(batch.V_h.size(0), self.num_heads, 1)  # (num nodes in batch) x num_heads x 1
+        batch.Z = score.new_zeros(
+            batch.V_h.size(0), self.num_heads, 1
+        )  # (num nodes in batch) x num_heads x 1
         scatter(score, edge_index[1], dim=0, out=batch.Z, reduce='add')
 
     def forward(self, batch):
@@ -71,7 +78,7 @@ class ExphormerAttention(nn.Module):
             h = torch.cat([h, batch.virt_h], dim=0)
             edge_index = torch.cat([edge_index, batch.virt_edge_index], dim=1)
             edge_attr = torch.cat([edge_attr, batch.virt_edge_attr], dim=0)
-        
+
         Q_h = self.Q(h)
         K_h = self.K(h)
         E = self.E(edge_attr)
@@ -98,6 +105,7 @@ class ExphormerAttention(nn.Module):
 
 register_layer('Exphormer', ExphormerAttention)
 
+
 def get_activation(activation):
     if activation == 'relu':
         return 2, nn.ReLU()
@@ -112,15 +120,22 @@ def get_activation(activation):
 
 
 class ExphormerFullLayer(nn.Module):
-    """Exphormer attention + FFN
-    """
+    """Exphormer attention + FFN"""
 
-    def __init__(self, in_dim, out_dim, num_heads,
-                 dropout=0.0,
-                 dim_edge=None,
-                 layer_norm=False, batch_norm=True,
-                 activation = 'reul',
-                 residual=True, use_bias=False, use_virt_nodes=False):
+    def __init__(
+        self,
+        in_dim,
+        out_dim,
+        num_heads,
+        dropout=0.0,
+        dim_edge=None,
+        layer_norm=False,
+        batch_norm=True,
+        activation='reul',
+        residual=True,
+        use_bias=False,
+        use_virt_nodes=False,
+    ):
         super().__init__()
 
         self.in_channels = in_dim
@@ -130,10 +145,14 @@ class ExphormerFullLayer(nn.Module):
         self.residual = residual
         self.layer_norm = layer_norm
         self.batch_norm = batch_norm
-        self.attention = ExphormerAttention(in_dim, out_dim, num_heads,
-                                          use_bias=use_bias, 
-                                          dim_edge=dim_edge,
-                                          use_virt_nodes=use_virt_nodes)
+        self.attention = ExphormerAttention(
+            in_dim,
+            out_dim,
+            num_heads,
+            use_bias=use_bias,
+            dim_edge=dim_edge,
+            use_virt_nodes=use_virt_nodes,
+        )
 
         self.O_h = nn.Linear(out_dim, out_dim)
 
@@ -211,7 +230,10 @@ class ExphormerFullLayer(nn.Module):
         return '{}(in_channels={}, out_channels={}, heads={}, residual={})'.format(
             self.__class__.__name__,
             self.in_channels,
-            self.out_channels, self.num_heads, self.residual)
+            self.out_channels,
+            self.num_heads,
+            self.residual,
+        )
 
 
 register_layer('ExphormerLayer', ExphormerFullLayer)
