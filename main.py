@@ -29,6 +29,7 @@ from torch_geometric.graphgym.utils.device import auto_select_device
 from graphgps.finetuning import init_model_from_pretrained, load_pretrained_model_cfg
 from graphgps.logger import create_logger
 from graphgps.optimizer.extra_optimizers import ExtendedSchedulerConfig
+from utils import load_data
 
 
 def new_optimizer_config(cfg):
@@ -150,7 +151,8 @@ if __name__ == '__main__':
         )
         logging.info(f'    Starting now: {datetime.datetime.now()}')
         # Set machine learning pipeline
-        loaders = create_loader()
+        # loaders = create_loader()
+        loaders = load_data('yelp')
         loggers = create_logger()
         # custom_train expects three loggers for 'train', 'valid' and 'test'.
         # GraphGym code creates one logger/loader for each of the 'train_mask' etc.
@@ -176,8 +178,8 @@ if __name__ == '__main__':
         optimizer = create_optimizer(model.parameters(), new_optimizer_config(cfg))
         scheduler = create_scheduler(optimizer, new_scheduler_config(cfg))
         # Print model info
-        logging.info(model)
-        logging.info(cfg)
+        # logging.info(model)
+        # logging.info(cfg)
         cfg.params = params_count(model)
         logging.info('Num parameters: %s', cfg.params)
         # Start training

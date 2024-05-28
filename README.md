@@ -1,6 +1,5 @@
 # Exphormers: Sparse Transformers for Graphs
 
-
 [![arXiv](https://img.shields.io/badge/arXiv-2303.06147-b31b1b.svg)](https://arxiv.org/abs/2303.06147)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/exphormer-sparse-transformers-for-graphs/graph-classification-on-cifar10-100k)](https://paperswithcode.com/sota/graph-classification-on-cifar10-100k?p=exphormer-sparse-transformers-for-graphs)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/exphormer-sparse-transformers-for-graphs/node-classification-on-coco-sp)](https://paperswithcode.com/sota/node-classification-on-coco-sp?p=exphormer-sparse-transformers-for-graphs)
@@ -9,13 +8,9 @@
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/exphormer-sparse-transformers-for-graphs/node-classification-on-pascalvoc-sp-1)](https://paperswithcode.com/sota/node-classification-on-pascalvoc-sp-1?p=exphormer-sparse-transformers-for-graphs)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/exphormer-sparse-transformers-for-graphs/link-prediction-on-pcqm-contact)](https://paperswithcode.com/sota/link-prediction-on-pcqm-contact?p=exphormer-sparse-transformers-for-graphs)
 
-
-
 ![Exphormer-viz](./Exphormers.png)
 
-
 In this work we introduce new sparse transformers for graph data, and use them in the [GraphGPS](https://github.com/rampasek/GraphGPS) framework. Our sparse transformers outperform BigBird and Performer in all cases we tried, which have been mainly designed for the natural language processing context; in many cases, we even get better results than full (dense attention) transformers. Our sparse transformer has three components: actual edges, expander graphs, and universal connectors or virtual nodes. We combine these components into a single sparse attention mechanism.
-
 
 ### Python environment setup with Conda
 
@@ -23,8 +18,14 @@ In this work we introduce new sparse transformers for graph data, and use them i
 conda create -n exphormer python=3.9
 conda activate exphormer
 
-conda install pytorch=1.10 torchvision torchaudio -c pytorch -c nvidia
-conda install pyg=2.0.4 -c pyg -c conda-forge
+conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+conda install -c dglteam/label/cu121 dgl
+conda install pyg=2.5.2 -c pyg -c conda-forge
+
+pip install torch_geometric
+
+# Optional dependencies:
+pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.3.0+cu121.html
 
 # RDKit is required for OGB-LSC PCQM4Mv2 and datasets derived from it.  
 conda install openbabel fsspec rdkit -c conda-forge
@@ -36,8 +37,8 @@ pip install torchmetrics performer-pytorch ogb tensorboardX wandb
 conda clean --all
 ```
 
-
 ### Running Exphormer
+
 ```bash
 conda activate exphormer
 
@@ -46,12 +47,18 @@ python main.py --cfg configs/Exphormer_LRGB/Peptides_Struct.yaml  wandb.use Fals
 
 # Running Exphormer for Cifar10
 python main.py --cfg configs/Exphormer/cifar10.yaml  wandb.use False
+
+python main.py --cfg configs/yelp.yaml  wandb.use False
+
+python main.py --cfg configs/amazon.yaml  wandb.use False
 ```
+
 You can also set your wandb settings and use wandb.
 
 ### Guide on configs files
 
 Most of the configs are shared with [GraphGPS](https://github.com/rampasek/GraphGPS) code. You can change the following parameters in the config files for different parameters and variants of the Exphormer:
+
 ```
 prep:
   exp: True  # Set True for using expander graphs, set False otherwise. 
@@ -70,6 +77,7 @@ prep:
 ## Citation
 
 Our work can be cited using the following bibtex:
+
 ```bibtex
 @inproceedings{shirzad2023exphormer,
   title={Exphormer: Sparse transformers for graphs},
